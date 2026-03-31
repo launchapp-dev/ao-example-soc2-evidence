@@ -1,0 +1,111 @@
+# Evidence Sources Configuration
+# Maps source types to collection methods and the criteria they satisfy
+
+sources:
+  git_history:
+    type: command
+    description: "Git commit history for change management evidence"
+    collection_script: "collect-git-evidence.sh"
+    output_file: "data/raw/git-commits.json"
+    criteria: [CC8.1, CC8.2, CC8.3]
+    staleness_threshold_days: 90
+    format: json
+
+  branch_protection:
+    type: gh_api
+    description: "Branch protection rules for access control and change management evidence"
+    collection_script: "collect-git-evidence.sh"
+    output_file: "data/raw/branch-protection.json"
+    criteria: [CC6.1, CC6.3, CC8.1]
+    staleness_threshold_days: 90
+    format: json
+
+  pr_reviews:
+    type: gh_api
+    description: "Pull request review data for code review evidence"
+    collection_script: "collect-git-evidence.sh"
+    output_file: "data/raw/pr-reviews.json"
+    criteria: [CC6.1, CC8.1]
+    staleness_threshold_days: 90
+    format: json
+
+  ci_cd_workflows:
+    type: gh_api
+    description: "GitHub Actions workflow definitions for pipeline evidence"
+    collection_script: "collect-cicd-evidence.sh"
+    output_file: "data/raw/workflows.json"
+    criteria: [CC7.1, CC8.1, PI1.1, PI1.2]
+    staleness_threshold_days: 90
+    format: json
+
+  workflow_runs:
+    type: gh_api
+    description: "Recent CI/CD run history for deployment and monitoring evidence"
+    collection_script: "collect-cicd-evidence.sh"
+    output_file: "data/raw/workflow-runs.json"
+    criteria: [CC7.1, CC7.2, CC8.1, A1.1, PI1.1]
+    staleness_threshold_days: 30
+    format: json
+
+  environments:
+    type: gh_api
+    description: "GitHub deployment environments for availability evidence"
+    collection_script: "collect-cicd-evidence.sh"
+    output_file: "data/raw/environments.json"
+    criteria: [CC8.1, A1.1, A1.2]
+    staleness_threshold_days: 90
+    format: json
+
+  access_reviews:
+    type: gh_api
+    description: "Org members, teams, and role assignments for access control evidence"
+    collection_script: "collect-access-evidence.sh"
+    output_file: "data/raw/org-members.json"
+    criteria: [CC6.1, CC6.2, CC6.3]
+    staleness_threshold_days: 90
+    format: json
+
+  repo_access:
+    type: gh_api
+    description: "Repository collaborators and permission levels"
+    collection_script: "collect-access-evidence.sh"
+    output_file: "data/raw/repo-access.json"
+    criteria: [CC6.1, CC6.3, C1.2]
+    staleness_threshold_days: 90
+    format: json
+
+  security_settings:
+    type: gh_api
+    description: "Repository security feature configuration for risk management evidence"
+    collection_script: "collect-config-evidence.sh"
+    output_file: "data/raw/security-settings.json"
+    criteria: [CC3.1, CC7.1, CC7.2, CC9.1, C1.1]
+    staleness_threshold_days: 30
+    format: json
+
+  repo_configs:
+    type: filesystem
+    description: "CODEOWNERS, SECURITY.md, issue templates, and other policy files"
+    collection_script: "collect-config-evidence.sh"
+    output_file: "data/raw/repo-configs.json"
+    criteria: [CC1.1, CC2.1, CC6.1, C1.2, P1.1, P3.1]
+    staleness_threshold_days: 90
+    format: json
+
+  secrets_audit:
+    type: gh_api
+    description: "Count and names of repository secrets (no values) for secrets management evidence"
+    collection_script: "collect-config-evidence.sh"
+    output_file: "data/raw/secrets-audit.json"
+    criteria: [CC6.1, C1.1, C1.2]
+    staleness_threshold_days: 90
+    format: json
+
+  security_policy:
+    type: filesystem
+    description: "SECURITY.md and security policy documentation"
+    collection_script: "collect-config-evidence.sh"
+    output_file: "data/raw/repo-configs.json"
+    criteria: [CC1.1, P1.1]
+    staleness_threshold_days: 180
+    format: json

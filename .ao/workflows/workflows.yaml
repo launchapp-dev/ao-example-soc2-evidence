@@ -1,0 +1,34 @@
+default_workflow_ref: evidence-collection
+
+workflows:
+  - id: evidence-collection
+    name: "SOC 2 Evidence Collection"
+    description: |
+      Full quarterly evidence collection cycle: loads control framework, collects evidence
+      from git/GitHub, normalizes and analyzes gaps, plans remediation for any weaknesses,
+      and compiles a complete auditor-ready evidence package organized by Trust Service Criteria.
+    phases:
+      - load-control-framework
+      - collect-git-evidence
+      - collect-cicd-evidence
+      - collect-access-evidence
+      - collect-config-evidence
+      - normalize-evidence
+      - analyze-gaps:
+          on_verdict:
+            rework:
+              target: plan-remediation
+          max_rework_attempts: 1
+      - compile-audit-package
+    post_success:
+      notify:
+        message: "SOC 2 evidence package compiled. Review output/auditor-summary.md before sharing with auditors."
+
+  - id: gap-monitor
+    name: "SOC 2 Gap Monitor"
+    description: |
+      Lightweight weekly freshness check. Verifies evidence is current, detects new
+      unscoped members or repos, and creates GitHub issues when staleness is detected.
+    phases:
+      - quick-collect
+      - check-freshness

@@ -1,0 +1,52 @@
+# Organization Configuration for SOC 2 Evidence Collection
+# Edit these values to match your organization
+
+organization: "example-org"
+github_org: "example-org"
+
+audit_period:
+  start: "2025-01-01"
+  end: "2025-12-31"
+  type: "Type II"
+
+report_title: "SOC 2 Type II Evidence Package"
+report_subtitle: "Trust Service Criteria: Security, Availability, Processing Integrity, Confidentiality, Privacy"
+auditor: "External Audit Firm LLP"
+prepared_by: "Engineering Security Team"
+report_date: "2025-10-01"
+
+# Repositories in scope for this audit
+repos_in_scope:
+  - "main-app"
+  - "api-service"
+  - "infrastructure"
+
+# Primary production branch name
+default_branch: "main"
+
+# Trust service categories in scope for this audit
+# Remove any categories your organization has not included in their SOC 2 scope
+categories_in_scope:
+  - CC    # Security (Common Criteria) — required for all SOC 2 reports
+  - A     # Availability
+  - PI    # Processing Integrity
+  - C     # Confidentiality
+  - P     # Privacy
+
+# Evidence freshness thresholds (days)
+# Evidence older than these thresholds is considered stale
+freshness_thresholds:
+  critical: 90    # Access control evidence (CC6.x)
+  standard: 90    # Most evidence
+  configuration: 180  # Policies and configuration files
+
+# GitHub Actions workflow names used for CI/CD (for evidence matching)
+ci_cd_workflows:
+  - "ci"
+  - "test"
+  - "deploy"
+  - "lint"
+  - "security-scan"
+
+# Next audit date (used for remediation due date calculations)
+next_audit_date: "2026-01-15"

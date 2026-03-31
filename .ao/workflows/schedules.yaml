@@ -1,0 +1,12 @@
+schedules:
+  - id: quarterly-collection
+    cron: "0 6 1 */3 *"
+    workflow_ref: evidence-collection
+    enabled: true
+    description: "Full SOC 2 evidence collection run on the 1st of Jan, Apr, Jul, Oct at 6am"
+
+  - id: weekly-freshness
+    cron: "0 8 * * 1"
+    workflow_ref: gap-monitor
+    enabled: true
+    description: "Weekly Monday freshness check — detects stale evidence and unscoped resources"

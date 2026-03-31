@@ -1,0 +1,168 @@
+# SOC 2 Control Framework
+# Maps Trust Service Criteria to organizational controls
+# Edit this file to match your organization's actual control environment
+
+organization: "example-org"
+framework_version: "2017-TSC"
+
+# ── SECURITY (Common Criteria) ────────────────────────────────────────────────
+criteria:
+  CC1.1:
+    title: "Control Environment - COSO Principles"
+    description: "The entity demonstrates a commitment to integrity and ethical values"
+    controls:
+      - id: GOV-01
+        description: "Code of conduct and security policies are documented and communicated"
+        evidence_sources: [repo_configs, security_policy]
+
+  CC2.1:
+    title: "Communication and Information - Internal"
+    description: "Information is identified, captured, and communicated to support control functioning"
+    controls:
+      - id: COM-01
+        description: "Security incidents are tracked via GitHub issues"
+        evidence_sources: [github_issues]
+
+  CC3.1:
+    title: "Risk Assessment - Identifies Risk"
+    description: "The entity specifies objectives with sufficient clarity to enable identification of risks"
+    controls:
+      - id: RISK-01
+        description: "Automated vulnerability scanning is enabled on all repos"
+        evidence_sources: [security_settings]
+
+  CC6.1:
+    title: "Logical Access - Registration and Authorization"
+    description: "Logical access security measures restrict access to authorized internal and external users"
+    controls:
+      - id: AC-01
+        description: "Access is granted only to authorized users with appropriate roles"
+        evidence_sources: [access_reviews, repo_access]
+      - id: AC-02
+        description: "Branch protection rules restrict direct pushes to production branches"
+        evidence_sources: [branch_protection]
+
+  CC6.2:
+    title: "Logical Access - New Credentials"
+    description: "New internal and external users are registered and authorized prior to accessing the system"
+    controls:
+      - id: AC-03
+        description: "GitHub org membership requires invitation and approval"
+        evidence_sources: [access_reviews]
+
+  CC6.3:
+    title: "Logical Access - Removes Access"
+    description: "Access is removed when no longer required"
+    controls:
+      - id: AC-04
+        description: "Outside collaborators are reviewed and removed when no longer needed"
+        evidence_sources: [access_reviews, repo_access]
+
+  CC7.1:
+    title: "System Operations - Detects Configuration Changes"
+    description: "Detection and monitoring procedures identify deviations from expected configurations"
+    controls:
+      - id: OPS-01
+        description: "Secret scanning and Dependabot alerts are enabled"
+        evidence_sources: [security_settings]
+      - id: OPS-02
+        description: "CI/CD pipelines run automated checks on all changes"
+        evidence_sources: [ci_cd_workflows, workflow_runs]
+
+  CC7.2:
+    title: "System Operations - Monitors for Anomalies"
+    description: "The entity monitors for anomalies and assesses events for threats"
+    controls:
+      - id: OPS-03
+        description: "Automated workflow failure alerts are configured"
+        evidence_sources: [workflow_runs, security_settings]
+
+  CC8.1:
+    title: "Change Management - Authorizes Changes"
+    description: "Changes are authorized, designed, developed, configured, documented, tested, approved, and implemented"
+    controls:
+      - id: CHG-01
+        description: "All production changes require pull request review before merge"
+        evidence_sources: [pr_reviews, branch_protection]
+      - id: CHG-02
+        description: "CI/CD pipelines run automated tests before deployment"
+        evidence_sources: [ci_cd_workflows, workflow_runs]
+      - id: CHG-03
+        description: "Git history provides complete audit trail of all changes"
+        evidence_sources: [git_history]
+
+  CC9.1:
+    title: "Risk Mitigation - Identifies and Manages Risk"
+    description: "The entity identifies and manages risk from vendors and business partners"
+    controls:
+      - id: VEND-01
+        description: "Third-party dependencies are tracked and Dependabot alerts reviewed"
+        evidence_sources: [security_settings]
+
+# ── AVAILABILITY ──────────────────────────────────────────────────────────────
+  A1.1:
+    title: "Availability - Manages Capacity"
+    description: "Current processing volume and capacity requirements are managed"
+    controls:
+      - id: AVAIL-01
+        description: "CI/CD workflows track deployment frequency and success rates"
+        evidence_sources: [workflow_runs, environments]
+
+  A1.2:
+    title: "Availability - Environmental Threat Protections"
+    description: "Environmental protections are implemented to safeguard availability"
+    controls:
+      - id: AVAIL-02
+        description: "Multiple deployment environments (staging, production) provide rollback capability"
+        evidence_sources: [environments]
+
+# ── PROCESSING INTEGRITY ─────────────────────────────────────────────────────
+  PI1.1:
+    title: "Processing Integrity - Processes Completely"
+    description: "System processing is complete, valid, accurate, timely, and authorized"
+    controls:
+      - id: PI-01
+        description: "Automated test suites validate processing integrity before deployment"
+        evidence_sources: [ci_cd_workflows, workflow_runs]
+
+  PI1.2:
+    title: "Processing Integrity - Inputs are Complete"
+    description: "Inputs to systems and subsystems are complete, accurate, and valid"
+    controls:
+      - id: PI-02
+        description: "CI/CD pipeline includes input validation checks"
+        evidence_sources: [ci_cd_workflows]
+
+# ── CONFIDENTIALITY ───────────────────────────────────────────────────────────
+  C1.1:
+    title: "Confidentiality - Identifies and Classifies"
+    description: "Confidential information is identified and classified to meet the entity's objectives"
+    controls:
+      - id: CONF-01
+        description: "GitHub secret scanning prevents accidental exposure of credentials"
+        evidence_sources: [security_settings, secrets_audit]
+
+  C1.2:
+    title: "Confidentiality - Disposes of Confidential Information"
+    description: "Confidential information is protected from unauthorized access and disclosure"
+    controls:
+      - id: CONF-02
+        description: "Repository secrets are managed via GitHub secrets (not hardcoded)"
+        evidence_sources: [secrets_audit, repo_configs]
+
+# ── PRIVACY ──────────────────────────────────────────────────────────────────
+  P1.1:
+    title: "Privacy - Privacy Notice"
+    description: "The entity provides notice about its privacy practices"
+    controls:
+      - id: PRIV-01
+        description: "Security and privacy policies are documented in SECURITY.md"
+        evidence_sources: [security_policy, repo_configs]
+
+  P3.1:
+    title: "Privacy - Consistent with Objectives"
+    description: "Personal information is collected consistent with the entity's objectives"
+    controls:
+      - id: PRIV-02
+        description: "CODEOWNERS and access controls limit who can access sensitive code"
+        evidence_sources: [repo_configs, access_reviews]

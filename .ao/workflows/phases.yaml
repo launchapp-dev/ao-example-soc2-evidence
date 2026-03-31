@@ -1,0 +1,282 @@
+phases:
+  # ── evidence-collection workflow phases ──────────────────────────────────────
+
+  load-control-framework:
+    mode: agent
+    agent: criteria-mapper
+    directive: |
+      Load and validate the organization's SOC 2 control framework.
+
+      1. Read config/org-config.yaml to understand audit scope, period, and in-scope repos
+      2. Read config/control-framework.yaml to get the full TSC criteria → controls mapping
+      3. Read config/evidence-sources.yaml to get the evidence source definitions
+      4. For each TSC criterion in scope (all CC, A, PI, C, P categories listed in the config):
+         - Verify at least one control is mapped
+         - Verify each control has at least one evidence source
+         - Flag any unmapped criteria as critical gaps
+      5. Use sequential-thinking MCP to reason through any ambiguous criterion-to-control
+         mappings (e.g., where a single piece of evidence satisfies multiple criteria)
+      6. Write data/control-map.json with the complete structured mapping
+      7. Write data/collection-manifest.json listing every evidence item to collect,
+         including which script collects it and which output file it writes to
+      8. Print a summary: total criteria in scope, total controls, total evidence items to collect
+
+      Create data/ and data/raw/ and data/evidence-records/ directories if they don't exist.
+    capabilities:
+      mutates_state: true
+      writes_files: true
+
+  collect-git-evidence:
+    mode: command
+    command:
+      program: bash
+      args: ["-c", "scripts/collect-git-evidence.sh"]
+      cwd_mode: project_root
+      timeout_secs: 120
+    retry_policy:
+      max_attempts: 2
+      backoff_secs: 10
+
+  collect-cicd-evidence:
+    mode: command
+    command:
+      program: bash
+      args: ["-c", "scripts/collect-cicd-evidence.sh"]
+      cwd_mode: project_root
+      timeout_secs: 120
+    retry_policy:
+      max_attempts: 2
+      backoff_secs: 10
+
+  collect-access-evidence:
+    mode: command
+    command:
+      program: bash
+      args: ["-c", "scripts/collect-access-evidence.sh"]
+      cwd_mode: project_root
+      timeout_secs: 120
+    retry_policy:
+      max_attempts: 2
+      backoff_secs: 10
+
+  collect-config-evidence:
+    mode: command
+    command:
+      program: bash
+      args: ["-c", "scripts/collect-config-evidence.sh"]
+      cwd_mode: project_root
+      timeout_secs: 120
+    retry_policy:
+      max_attempts: 2
+      backoff_secs: 10
+
+  normalize-evidence:
+    mode: agent
+    agent: evidence-analyzer
+    directive: |
+      Normalize all raw evidence collected in data/raw/ into structured evidence records.
+
+      1. Read data/control-map.json to understand what criteria each evidence source satisfies
+      2. Process each file in data/raw/:
+         - data/raw/git-commits.json → maps to CC8.1, CC8.2 (change management)
+         - data/raw/branch-protection.json → maps to CC6.1, CC6.3, CC8.1 (access/change control)
+         - data/raw/pr-reviews.json → maps to CC6.1, CC8.1 (code review as change control)
+         - data/raw/workflows.json → maps to CC8.1, CC7.1 (CI/CD as change management)
+         - data/raw/workflow-runs.json → maps to CC7.1, CC8.1, A1.1 (monitoring/availability)
+         - data/raw/environments.json → maps to CC8.1 (deployment environments)
+         - data/raw/org-members.json → maps to CC6.1, CC6.2, CC6.3 (logical access)
+         - data/raw/teams.json → maps to CC6.1, CC6.2 (role-based access)
+         - data/raw/repo-access.json → maps to CC6.1, CC6.3 (repository access)
+         - data/raw/security-settings.json → maps to CC3.1, CC7.1, CC7.2 (risk/monitoring)
+         - data/raw/repo-configs.json → maps to CC2.2, CC6.1 (policies/procedures)
+         - data/raw/secrets-audit.json → maps to CC6.1, C1.1 (secrets management)
+      3. For each raw file:
+         - Extract key data points relevant to the mapped criteria
+         - Determine evidence status (current/stale/expired) based on collection timestamp
+         - Write a clear summary of what the evidence demonstrates
+         - Create structured evidence records
+      4. Write organized records to:
+         - data/evidence-records/CC.json — all Common Criteria evidence
+         - data/evidence-records/A.json — Availability evidence
+         - data/evidence-records/PI.json — Processing Integrity evidence
+         - data/evidence-records/C.json — Confidentiality evidence
+         - data/evidence-records/P.json — Privacy evidence
+      5. Write data/evidence-summary.json with totals, status counts, and completeness %
+    capabilities:
+      mutates_state: true
+      writes_files: true
+
+  analyze-gaps:
+    mode: agent
+    agent: gap-analyzer
+    directive: |
+      Perform a comprehensive gap analysis comparing required vs collected evidence.
+
+      1. Read data/control-map.json — this is the source of truth for what's REQUIRED
+      2. Read all files in data/evidence-records/ — this is what was COLLECTED
+      3. Load previous baseline from memory MCP (entity name: "evidence-baseline-latest")
+         - If no baseline exists, this is the first run — note this and skip trend analysis
+      4. Use sequential-thinking MCP to reason through complex multi-criteria assessments:
+         - Where a single evidence item satisfies multiple criteria differently
+         - Where compensating controls might offset a deficiency
+         - Where the severity of a gap depends on multiple factors
+      5. For each control in the control map:
+         - Match against collected evidence records
+         - Determine coverage percentage
+         - Classify: effective / deficiency / material_weakness
+         - List all gaps with severity
+         - Compare to baseline for trend
+      6. Write data/gap-analysis.json with per-control analysis
+      7. Write data/gap-analysis-summary.json with aggregate counts
+      8. Issue your verdict:
+         - "advance": no material_weakness findings — package is ready for audit compilation
+         - "rework": one or more material_weakness findings — remediation required first
+      Output your verdict JSON as the final line of your response.
+    capabilities:
+      mutates_state: true
+      writes_files: true
+    decision_contract:
+      required_fields: [verdict, reasoning]
+
+  plan-remediation:
+    mode: agent
+    agent: remediation-planner
+    directive: |
+      Create a prioritized remediation plan for all identified evidence gaps.
+
+      1. Read data/gap-analysis.json for the full list of gaps
+      2. Read config/org-config.yaml for the audit period end date (used to set due dates)
+      3. Read data/issue-tracker.json if it exists — check for existing GitHub issues on
+         the same topics to avoid creating duplicates
+      4. For each gap:
+         - Create a remediation task with P0–P3 priority
+         - Include specific, actionable instructions
+         - Identify the most appropriate team/role to own the task
+         - Set a realistic due date given the priority and audit timeline
+      5. Create GitHub issues via the github MCP for:
+         - ALL P0 items (material weaknesses in critical access controls)
+         - ALL P1 items (significant deficiencies in change management / monitoring)
+         - Do NOT create issues for P2/P3 items — include those only in the local plan
+      6. For each created issue, record the issue URL and number in data/issue-tracker.json
+      7. Write data/remediation-plan.json with all tasks
+      8. Write output/remediation-tracker.md:
+         - Grouped by priority (P0, P1, P2, P3)
+         - Sorted by due date within each group
+         - Include: priority badge, TSC criteria affected, specific action required,
+           assignee suggestion, due date, GitHub issue link (if created)
+         - Include a summary table at the top: total tasks by priority
+    capabilities:
+      mutates_state: true
+      writes_files: true
+
+  compile-audit-package:
+    mode: agent
+    agent: report-compiler
+    directive: |
+      Compile the complete auditor-ready evidence package from all collected evidence.
+
+      1. Read data/evidence-records/ (all category files)
+      2. Read data/gap-analysis.json and data/gap-analysis-summary.json
+      3. Read data/remediation-plan.json if it exists (may not exist if no rework was needed)
+      4. Read config/org-config.yaml for audit period, scope, and organization details
+      5. Create output/evidence-package/ directory
+
+      Generate each output document:
+
+      output/evidence-package/CC-security.md:
+      For each CC criterion (CC1.1 through CC9.x) covered in the framework:
+      - Print the criterion title and description
+      - List the organizational control(s) that address it
+      - List all evidence items collected, with: evidence ID, type, collection date, key data points
+      - State effectiveness assessment (Effective / Deficiency / Not Tested)
+      - If any gaps exist for this criterion, note them with remediation status
+
+      output/evidence-package/A-availability.md (same structure for A1.x)
+      output/evidence-package/PI-processing-integrity.md (same structure for PI1.x)
+      output/evidence-package/C-confidentiality.md (same structure for C1.x)
+      output/evidence-package/P-privacy.md (same structure for P1.x-P8.x)
+
+      output/control-matrix.md:
+      - ASCII/markdown grid: controls as rows, TSC criteria as columns
+      - Cells: ✓ (effective), ⚠ (deficiency), ✗ (weakness), — (not applicable)
+      - Footer row with per-column summary
+
+      output/executive-summary.md:
+      - Audit organization name, period, scope
+      - Overall posture: X of Y controls effective (Z%)
+      - Top 3 areas of strength with evidence
+      - Top 3 areas requiring attention with remediation timeline
+      - Open items count: P0/P1/P2/P3
+      - Management assertion: "Management asserts that controls described herein were
+        operating effectively during the audit period, with exceptions noted."
+
+      output/auditor-summary.md:
+      - Formal AICPA-style document
+      - Scope and methodology
+      - System description
+      - Control environment narrative
+      - Test results table: criterion | tested | result | exceptions
+      - Exception details with management responses and remediation commitments
+      - Evidence completeness assessment
+
+      output/evidence-index.md:
+      - Numbered list of all evidence items (EV-001 through EV-NNN)
+      - Columns: number, description, criteria, type, collected, status, file reference
+
+      6. Store evidence snapshot to memory MCP:
+         entity name: "evidence-baseline-latest"
+         Include: collection date, total controls, effectiveness %, gap counts by severity
+
+      7. Write data/collection-status.json:
+         { "completed_at": "...", "total_controls": N, "effective": N, "deficiencies": N,
+           "material_weaknesses": N, "evidence_items": N, "documents_generated": N }
+    capabilities:
+      mutates_state: true
+      writes_files: true
+
+  # ── gap-monitor workflow phases ───────────────────────────────────────────────
+
+  quick-collect:
+    mode: command
+    command:
+      program: bash
+      args: ["-c", "scripts/quick-collect.sh"]
+      cwd_mode: project_root
+      timeout_secs: 60
+    retry_policy:
+      max_attempts: 2
+      backoff_secs: 5
+
+  check-freshness:
+    mode: agent
+    agent: gap-analyzer
+    directive: |
+      Perform a lightweight weekly freshness check on evidence status.
+
+      1. Read data/raw/quick-check.json (written by quick-collect.sh)
+      2. Read data/evidence-summary.json from the last full collection run (if it exists)
+      3. Load previous baseline from memory MCP (entity: "evidence-baseline-latest")
+
+      Freshness checks:
+      - Any evidence category >90 days since last full collection = stale
+      - Git commits: are there any commits in the last 30 days? (expected for active repos)
+      - CI/CD runs: any workflow runs in the last 14 days? (expected for active repos)
+      - Access review: was it run in the last 90 days?
+      - New members: are there any org members not present in the last collection?
+      - New repos in scope: any new repos added to the org that aren't in the evidence scope?
+
+      Write output/freshness-report.md:
+      - Date of check
+      - Status per evidence category (fresh/stale/unknown)
+      - Days since last full collection
+      - Any new members or repos detected
+      - Recommendation: "Current — no action needed" or "Action required — trigger full collection"
+
+      If any category is stale OR new unscoped members/repos are detected:
+      - Create a GitHub issue titled "SOC 2 Evidence Freshness Alert - [DATE]" via github MCP
+      - Include: which categories are stale, days since last collection, recommended action
+
+      Note: This phase does NOT output a decision contract — it always completes successfully.
+    capabilities:
+      mutates_state: true
+      writes_files: true
